@@ -33,12 +33,12 @@ const expiresIn = { expires_in : config.token.expiresIn };
 
  // Disabling 3-legged OAuth2 until needed
 
-/*server.grant(oauth2orize.grant.code((client, redirectURI, user, ares, done) => {
+server.grant(oauth2orize.grant.code((client, redirectURI, user, ares, done) => {
   const code = utils.createToken({ sub : user.id, exp : config.codeToken.expiresIn });
   db.authorizationCodes.save(code, client.id, redirectURI, user.id, client.scope)
   .then(() => done(null, code))
   .catch(err => done(err));
-}));*/
+}));
 
 /**
  * Grant implicit authorization.
@@ -51,14 +51,14 @@ const expiresIn = { expires_in : config.token.expiresIn };
 
 // Disabling until neeed
 
-/*server.grant(oauth2orize.grant.token((client, user, ares, done) => {
+server.grant(oauth2orize.grant.token((client, user, ares, done) => {
   const token      = utils.createToken({ sub : user.id, exp : config.token.expiresIn });
   const expiration = config.token.calculateExpirationDate();
 
   db.accessTokens.save(token, expiration, user.id, client.id, client.scope)
   .then(() => done(null, token, expiresIn))
   .catch(err => done(err));
-}));*/
+}));
 
 /**
  * Exchange authorization codes for access tokens.
@@ -120,14 +120,14 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
 
 // Disabling until server-to-server (with no user) is needed
 
-/*server.exchange(oauth2orize.exchange.clientCredentials((client, scope, done) => {
+server.exchange(oauth2orize.exchange.clientCredentials((client, scope, done) => {
   const token      = utils.createToken({ sub : client.id, exp : config.token.expiresIn });
   const expiration = config.token.calculateExpirationDate();
   // Pass in a null for user id since there is no user when using this grant type
   db.accessTokens.save(token, expiration, null, client.id, scope)
   .then(() => done(null, token, null, expiresIn))
   .catch(err => done(err));
-}));*/
+}));
 
 /**
  * Exchange the refresh token for an access token.
@@ -243,4 +243,3 @@ server.deserializeClient((id, done) => {
   .then(client => done(null, client))
   .catch(err => done(err));
 });
-
