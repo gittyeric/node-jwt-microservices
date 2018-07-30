@@ -18,8 +18,6 @@ const user           = require('./user');
 
 console.log('Using MemoryStore for the data store');
 console.log('Using MemoryStore for the Session');
-// TODO: Replace identity & permission stores with DB
-// Eventually need DB-backed resource client in DB too
 const MemoryStore = expressSession.MemoryStore;
 
 // Express configuration
@@ -51,9 +49,8 @@ app.post('/login',  site.login);
 app.get('/logout',  site.logout);
 app.get('/account', site.account);
 
-// Disable 3-legged authorization code logins until needed
-//app.get('/dialog/authorize',           oauth2.authorization);
-//app.post('/dialog/authorize/decision', oauth2.decision);
+app.get('/dialog/authorize',           oauth2.authorization);
+app.post('/dialog/authorize/decision', oauth2.decision);
 app.post('/oauth/token',               oauth2.token);
 
 app.get('/api/userinfo',   user.info);
@@ -65,8 +62,7 @@ app.get('/api/tokeninfo', token.info);
 
 // Mimicking google's token revoke endpoint from
 // https://developers.google.com/identity/protocols/OAuth2WebServer
-// Disabling for now until we get proper permission groups around this...
-// app.get('/api/revoke', token.revoke);
+app.get('/api/revoke', token.revoke);
 
 // static resources for stylesheets, images, javascript files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -106,6 +102,5 @@ const options = {
 };
 
 // Create our HTTPS server listening on port 3000.
-const port = 3000;
-https.createServer(options, app).listen(port);
-console.log(`OAuth 2.0 Authorization Server started on port ${port}`);
+https.createServer(options, app).listen(3000);
+console.log('OAuth 2.0 Authorization Server started on port 3000');

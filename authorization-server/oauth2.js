@@ -30,9 +30,6 @@ const expiresIn = { expires_in : config.token.expiresIn };
  * duration, etc. as parsed by the application.  The application issues a code,
  * which is bound to these values, and will be exchanged for an access token.
  */
-
- // Disabling 3-legged OAuth2 until needed
-
 server.grant(oauth2orize.grant.code((client, redirectURI, user, ares, done) => {
   const code = utils.createToken({ sub : user.id, exp : config.codeToken.expiresIn });
   db.authorizationCodes.save(code, client.id, redirectURI, user.id, client.scope)
@@ -48,9 +45,6 @@ server.grant(oauth2orize.grant.code((client, redirectURI, user, ares, done) => {
  * duration, etc. as parsed by the application.  The application issues a token,
  * which is bound to these values.
  */
-
-// Disabling until neeed
-
 server.grant(oauth2orize.grant.token((client, user, ares, done) => {
   const token      = utils.createToken({ sub : user.id, exp : config.token.expiresIn });
   const expiration = config.token.calculateExpirationDate();
@@ -117,9 +111,6 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
  * password/secret from the token request for verification. If these values are validated, the
  * application issues an access token on behalf of the client who authorized the code.
  */
-
-// Disabling until server-to-server (with no user) is needed
-
 server.exchange(oauth2orize.exchange.clientCredentials((client, scope, done) => {
   const token      = utils.createToken({ sub : client.id, exp : config.token.expiresIn });
   const expiration = config.token.calculateExpirationDate();
@@ -243,3 +234,4 @@ server.deserializeClient((id, done) => {
   .then(client => done(null, client))
   .catch(err => done(err));
 });
+

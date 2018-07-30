@@ -7,6 +7,10 @@ const jwt = require('jsonwebtoken');
 // in the RFC The OAuth 2.0 Authorization Framework: Bearer Token Usage
 // (http://tools.ietf.org/html/rfc6750)
 
+/**
+ * Tokens in-memory data structure which stores all of the access tokens
+ */
+let tokens = Object.create(null);
 
 /**
  * Returns an access token if it finds one, otherwise returns null if one is not found.
@@ -15,15 +19,11 @@ const jwt = require('jsonwebtoken');
  */
 exports.find = (token) => {
   try {
-    // TODO!!!!!
-    // TODO!!!!!
-    // TODO!!!!!: Cake in secretProvider and use jwt.validate() instead!!!
-    const decoded = jwt.decode(token);
-    if (decoded) {
-      return Promise.resolve(token);
-    }
-  } catch (error) {}
-  return Promise.resolve(undefined);
+    const id = jwt.decode(token).jti;
+    return Promise.resolve(tokens[id]);
+  } catch (error) {
+    return Promise.resolve(undefined);
+  }
 };
 
 /**
@@ -38,7 +38,9 @@ exports.find = (token) => {
  * @returns {Promise} resolved with the saved token
  */
 exports.save = (token, expirationDate, userID, clientID, scope) => {
-  return Promise.resolve(token);
+  const id = jwt.decode(token).jti;
+  tokens[id] = { userID, expirationDate, clientID, scope };
+  return Promise.resolve(tokens[id]);
 };
 
 /**
@@ -47,7 +49,14 @@ exports.save = (token, expirationDate, userID, clientID, scope) => {
  * @returns {Promise} resolved with the deleted token
  */
 exports.delete = (token) => {
-  return Promise.resolve(token);
+  try {
+    const id = jwt.decode(token).jti;
+    const deletedToken = tokens[id];
+    delete tokens[id];
+    return Promise.resolve(deletedToken);
+  } catch (error) {
+    return Promise.resolve(undefined);
+  }
 };
 
 /**
@@ -56,7 +65,16 @@ exports.delete = (token) => {
  * @returns {Promise} resolved with an associative of tokens that were expired
  */
 exports.removeExpired = () => {
-  return Promise.resolve([]);
+  const keys    = Object.keys(tokens);
+  const expired = keys.reduce((accumulator, key) => {
+    if (new Date() > tokens[key].expirationDate) {
+      const expiredToken = tokens[key];
+      delete tokens[key];
+      accumulator[key] = expiredToken; // eslint-disable-line no-param-reassign
+    }
+    return accumulator;
+  }, Object.create(null));
+  return Promise.resolve(expired);
 };
 
 /**
@@ -64,5 +82,7 @@ exports.removeExpired = () => {
  * @returns {Promise} resolved with all removed tokens returned
  */
 exports.removeAll = () => {
-  return Promise.resolve([]);
+  const deletedTokens = tokens;
+  tokens              = Object.create(null);
+  return Promise.resolve(deletedTokens);
 };
