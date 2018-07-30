@@ -12,10 +12,6 @@ const readJwt = (req, secret) => {
     return decryptJWT(bearer, secret);
 }
 
-// TODO: Probably need to serialize jwt.exp to proper Date obj
-const getSecretForJWT = (jwt) =>
-    getSecretByExpireDate(secret)(new Date(jwt.exp * 1000));
-
 const getExpireDateFromReq = (req) => {
     const decodedJWT = JWT.decode(get);
     return new Date(decodedJWT.exp * 1000);

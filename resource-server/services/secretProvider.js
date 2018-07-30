@@ -9,7 +9,7 @@ interface SecretProvider {
 */
 
 const getSecretByExpireDate = (secret) => 
-    (date) => Promise.resolve(secret);
+    ((date) => Promise.resolve(secret));
 
 module.exports = (secret) => ({
     getSecretByExpireDate: getSecretByExpireDate(secret),

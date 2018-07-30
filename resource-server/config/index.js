@@ -28,7 +28,7 @@ exports.authorization = {
 exports.jwt = {
   issuer:                 'qc',
   accessTokenSecret:      'sakjfkl2343ffZ02ace4w',
-  refreshToenSecret:      'fpj2foqfj324fsiosf',
+  refreshTokenSecret:      'fpj2foqfj324fsiosf',
   accessTokenExpireSecs:  1800, // 30 minutes
   refreshTokenExpireSecs: 1209600, // 14 days
 };

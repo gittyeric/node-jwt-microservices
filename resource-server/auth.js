@@ -1,11 +1,28 @@
 'use strict';
 
 const BearerStrategy = require('passport-http-bearer').Strategy;
-const config         = require('./config');
-const db             = require('./db');
-const LocalStrategy  = require('passport-local').Strategy;
-const passport       = require('passport');
-const request        = require('request');
+const config = require('./config');
+const LocalStrategy = require('passport-local').Strategy;
+const passport = require('passport');
+const request = require('request');
+const fs = require('fs');
+const path = require('path');
+
+// Configure all authorization-related services
+
+/** Public certificate used for verification.  Note: you could also use the private key */
+const publicKey = fs.readFileSync(path.join(__dirname, './certs/auth-server-public-cert.pem'));
+
+require('./services/registry').builder
+  .setSecretProvider(require('./services/secretProvider')(publicKey))
+  .setAccessTokenProvider(require('./services/accessTokenProvider'))
+  .setRefreshTokenProvider(require('./services/refreshTokenProvider'))
+  //.addIdentityProvider(require('./identityProvider'))
+  ;
+const registry = require('./services/registry').registry();
+
+const jwtUtil = require('./jwt/jwtutil')(registry.secrets);
+const decodeValidJWT = jwtUtil.decodeValidJWT;
 
 /* eslint-disable camelcase */
 
@@ -15,7 +32,7 @@ const request        = require('request');
  * This strategy is used to authenticate users based on a username and password.
  * Anytime a request is made to authorize an application, we must ensure that
  * a user is logged in before asking them to approve the request.  The login
- * mechanism is going to use our server's client id/secret to authenticate/authorize
+ * mechanism is going to use our server's cvlient id/secret to authenticate/authorize
  * the user and get both an access and refresh token.  The sever *does not* store the
  * user's name and the server *does not* store the user's password.  Instead, using
  * the access token the server can reach endpoints that the user has been granted
@@ -30,29 +47,35 @@ const request        = require('request');
 passport.use(new LocalStrategy((username, password, done) => {
   const basicAuth = new Buffer(`${config.client.clientID}:${config.client.clientSecret}`).toString('base64');
   request.post('https://localhost:3000/oauth/token', {
-    form : {
+    form: {
       username,
       password,
-      grant_type : 'password',
-      scope      : 'offline_access',
+      grant_type: 'password',
+      scope: '', // TODO, maybe
     },
     headers: {
       Authorization: `Basic ${basicAuth}`,
     },
   }, (error, response, body) => {
-    const { access_token, refresh_token, expires_in } = JSON.parse(body);
-    if (response.statusCode === 200 && access_token) {
-      // TODO: scopes
-      const expirationDate = expires_in ? new Date(Date.now() + (expires_in * 1000)) : null;
-      db.accessTokens.save(access_token, expirationDate, config.client.clientID)
-      .then(() => {
-        if (refresh_token != null) {
-          return db.refreshTokens.save(refresh_token, config.client.clientID);
-        }
-        return Promise.resolve();
-      })
-      .then(done(null, { accessToken: access_token, refreshToken: refresh_token }))
-      .catch(() => done(null, false));
+    try {
+      const { access_token, refresh_token, expires_in } = JSON.parse(body);
+      if (response.statusCode === 200 && access_token) {
+        // TODO: scopes
+        const expirationDate = expires_in ? new Date(Date.now() + (expires_in * 1000)) : null;
+        registry.accessTokens.save(access_token, expirationDate, config.client.clientID)
+          .then(() => {
+            if (refresh_token != null) {
+              return registry.refreshTokens.save(refresh_token, config.client.clientID);
+            }
+            return Promise.resolve();
+          })
+          .then(done(null, { accessToken: access_token, refreshToken: refresh_token }))
+          .catch(() => done(null, false));
+      }
+    }
+    catch (e) {
+      console.log(e);
+      done(null, false);
     }
   });
 }));
@@ -66,32 +89,53 @@ passport.use(new LocalStrategy((username, password, done) => {
  * the authorizing user.
  */
 passport.use(new BearerStrategy((accessToken, done) => {
-  db.accessTokens.find(accessToken)
-  .then((token) => {
-    if (token != null && new Date() > token.expirationDate) {
-      db.accessTokens.delete(accessToken)
-      .then(() => null);
-    }
-    return token;
-  })
-  .then((token) => {
-    if (token == null) {
-      const tokeninfoURL = config.authorization.tokeninfoURL;
-      request.get(tokeninfoURL + accessToken, (error, response, body) => {
-        if (error != null || response.statusCode !== 200) {
-          throw new Error('Token request not valid');
-        }
-        const { expires_in } = JSON.parse(body);
-        const expirationDate = expires_in ? new Date(Date.now() + (expires_in * 1000)) : null;
-        // TODO: scopes
-        return db.accessTokens.save(accessToken, expirationDate, config.client.clientID);
-      });
-    }
-    return token;
-  })
-  .then(() => done(null, accessToken))
-  .catch(() => done(null, false));
+  decodeValidJWT(accessToken)
+    .then((jwt) => {
+      if (new Date() > (new Date(jwt.exp * 1000))) {
+        console.log('Token Expired');
+        throw new Error('Token Expired');
+      }
+      done(null, jwt);
+    })
+    .catch((e) => {
+      console.log(e);
+      done(null, false);
+    });
+
 }));
+
+/*  db.accessTokens.find(accessToken)
+    .then((token) => {
+      if (token != null && new Date() > token.expirationDate) {
+        db.accessTokens.delete(accessToken)
+          .then(() => null);
+        return null;
+      }
+      return token;
+    })
+    .then((token) => {
+      if (token == null) {
+        const tokeninfoURL = config.authorization.tokeninfoURL;
+ 
+        // PLUMB!
+ 
+        request.get(tokeninfoURL + accessToken, (error, response, body) => {
+          if (error != null || response.statusCode !== 200) {
+            // TODO: Fix this from crashing whole server
+            throw new Error('Token request not valid');
+          }
+          const { expires_in } = JSON.parse(body);
+          const expirationDate = expires_in ? new Date(Date.now() + (expires_in * 1000)) : null;
+          // TODO: scopes?
+          return db.accessTokens.save(accessToken, expirationDate, config.client.clientID);
+        });
+      }
+      return token;
+    })
+    .then(() => done(null, accessToken))
+    .catch(() => done(null, false));
+})
+);*/
 
 // Register serialialization and deserialization functions.
 //
@@ -113,4 +157,3 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser((user, done) => {
   done(null, user);
 });
-

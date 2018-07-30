@@ -1,8 +1,8 @@
 'use strict';
 
-const config  = require('../config');
-const db      = require('../db');
-const request = require('request');
+const config   = require('../config');
+const registry = require('../services/registry').registry();
+const request  = require('request');
 
 /* eslint-disable camelcase */
 
@@ -72,10 +72,10 @@ exports.receivetoken = (req, res) => {
       req.session.isAuthorized = true;          // eslint-disable-line no-param-reassign
 
       const expirationDate = expires_in ? new Date(Date.now() + (expires_in * 1000)) : null;
-      db.accessTokens.save(access_token, expirationDate, config.client.clientID)
+      registry.accessTokens.save(access_token, expirationDate, config.client.clientID)
       .then(() => {
         if (refresh_token != null) {
-          return db.refreshTokens.save(refresh_token, config.client.clientID);
+          return registry.refreshTokens.save(refresh_token, config.client.clientID);
         }
         return Promise.resolve();
       })

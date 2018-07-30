@@ -45,6 +45,7 @@ class EndpointAuthorizerBuilder {
         const _this = this;
         const isPublic = this.isPublic;
         return new Promise((resolve, reject) => {
+            // TODO
             getSecretByReq(req).then((secret) => {
                 return readJwt(req, secret)
                     .then((jwt) => {

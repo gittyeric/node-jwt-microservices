@@ -3,7 +3,7 @@
 const bodyParser     = require('body-parser');
 const cookieParser   = require('cookie-parser');
 const config         = require('./config');
-const db             = require('./db');
+//const db             = require('./db');
 const express        = require('express');
 const expressSession = require('express-session');
 const fs             = require('fs');
@@ -16,19 +16,6 @@ const sso            = require('./sso');
 // Express configuration
 const app = express();
 app.set('view engine', 'ejs');
-app.use(cookieParser());
-
-// Session Configuration
-app.use(expressSession({
-  saveUninitialized : true,
-  resave            : true,
-  secret            : config.session.secret,
-}));
-
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-app.use(passport.initialize());
-app.use(passport.session());
 
 // Catch all for error messages.  Instead of a stack
 // trace, this will log the json of the error message
@@ -48,7 +35,22 @@ app.use((err, req, res, next) => {
   }
 });
 
+app.use(cookieParser());
+
+// Session Configuration
+app.use(expressSession({
+  saveUninitialized : true,
+  resave            : true,
+  secret            : config.session.secret,
+}));
+
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(passport.initialize());
+app.use(passport.session());
+
 // Passport configuration
+const secretProvider = require('./services/secretProvider')(config.jwt.accessTokenSecret);
 require('./auth');
 
 app.get('/',                      site.index);
@@ -64,10 +66,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // From time to time we need to clean up any expired tokens
 // in the database
-setInterval(() => {
+/*setInterval(() => {
   db.accessTokens.removeExpired()
   .catch(err => console.error('Error trying to remove expired tokens:', err.stack));
-}, config.db.timeToCheckExpiredTokens * 1000);
+}, config.db.timeToCheckExpiredTokens * 1000);*/
 
 // TODO: Change these for your own certificates.  This was generated
 // through the commands:
